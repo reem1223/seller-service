@@ -20,12 +20,13 @@
         body {
             font-family: 'Assistant', sans-serif;
             transition: background-color 0.5s ease;
+            margin: 0;
+            padding: 0;
         }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -33,9 +34,8 @@
             75% { transform: translateX(5px); }
         }
         .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
-        
         .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -82,17 +82,10 @@
         const normalizeDate = (d) => {
             if (!d) return "";
             let s = String(d).trim();
-            if (s.includes('T') || (s.includes('-') && s.length > 8) || s.includes('/')) {
-                const dateObj = new Date(s);
-                if (!isNaN(dateObj.getTime())) {
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const year = dateObj.getFullYear();
-                    if (year < 1910) return ""; 
-                    return `${day}/${month}/${year}`;
-                }
-            }
-            return s;
+            const dateObj = new Date(s);
+            if (isNaN(dateObj.getTime())) return s;
+            if (dateObj.getFullYear() < 1910) return "";
+            return dateObj.toLocaleDateString('he-IL');
         };
 
         const normalizeTime = (t) => {
@@ -102,28 +95,17 @@
                 const d = new Date(s);
                 if (!isNaN(d.getTime())) {
                     const rounded = new Date(d.getTime() + 30000); 
-                    const h = String(rounded.getHours()).padStart(2, '0');
-                    const m = String(rounded.getMinutes()).padStart(2, '0');
-                    return `${h}:${m}`;
+                    return `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
                 }
             }
             const parts = s.split(':');
-            if (parts.length >= 2) {
-                const h = parts[0].padStart(2, '0');
-                const m = parts[1].padEnd(2, '0').slice(0, 2);
-                return `${h}:${m}`;
-            }
-            return s;
+            return parts.length >= 2 ? `${parts[0].padStart(2, '0')}:${parts[1].padEnd(2, '0').slice(0, 2)}` : s;
         };
 
         const formatDuration = (mins) => {
             const m = parseInt(mins);
             if (isNaN(m)) return mins;
-            if (m === 15) return "15 דקות";
-            if (m === 30) return "חצי שעה";
-            if (m === 45) return "45 דקות";
             if (m === 60) return "שעה";
-            if (m === 90) return "שעה וחצי";
             if (m === 120) return "שעתיים";
             if (m > 120) {
                 const h = Math.floor(m / 60);
@@ -152,14 +134,17 @@
             return slots;
         };
 
-        // --- UI Components ---
-
         const Icon = ({ name, size = 18, className = "" }) => {
             const icons = {
                 calendar: <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>,
                 clock: <Fragment><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Fragment>,
                 user: <Fragment><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Fragment>,
-                settings: <Fragment><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2 2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></Fragment>,
+                settings: (
+                    <Fragment>
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </Fragment>
+                ),
                 logout: <Fragment><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Fragment>,
                 plus: <Fragment><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Fragment>,
                 trash: <Fragment><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></Fragment>,
@@ -185,14 +170,9 @@
         const Card = ({ children, className = "", themeColor, isDarkMode, ...props }) => (
             <div 
                 className={`rounded-2xl shadow-sm border border-slate-200/40 p-6 transition-all ${className}`} 
-                style={{ 
-                    backgroundColor: isDarkMode ? 'rgb(30, 41, 59)' : blendWithWhite(themeColor, 0.08), 
-                    ...props.style 
-                }}
+                style={{ backgroundColor: isDarkMode ? 'rgb(30, 41, 59)' : blendWithWhite(themeColor, 0.08), ...props.style }}
                 {...props}
-            >
-                {children}
-            </div>
+            >{children}</div>
         );
 
         const Button = ({ children, onClick, variant = "primary", className = "", disabled = false, themeColor = "#2563eb", type = "button" }) => {
@@ -222,9 +202,8 @@
             );
         };
 
-        // --- Sub-View Components ---
 
-        function LoginScreen({ onLogin, themeColor, isDarkMode, setIsDarkMode, status, refreshing, callApi }) {
+        function LoginScreen({ onLogin, themeColor, isDarkMode, setIsDarkMode, status, refreshing, callApi, appName, appDesc, tosContent }) {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [error, setError] = useState('');
@@ -236,112 +215,89 @@
             const [regPass, setRegPass] = useState('');
             const [regPassConfirm, setRegPassConfirm] = useState('');
             const [regError, setRegError] = useState('');
+            const [acceptTos, setAcceptTos] = useState(false);
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                if (!onLogin(email, password)) {
-                    setError('אימייל או סיסמה לא נכונים');
-                }
+                if (!onLogin(email, password)) setError('אימייל או סיסמה לא נכונים');
             };
 
             const handleRegister = (e) => {
                 e.preventDefault();
-                if (regPass !== regPassConfirm) {
-                    setRegError('הסיסמאות אינן תואמות');
-                    return;
-                }
-                const newUser = {
-                    id: String(Date.now()),
-                    type: 'user',
-                    email: regEmail.toLowerCase().trim(),
-                    password: regPass,
-                    role: 'customer',
-                    name: regName,
-                    phone: regPhone
-                };
+                if (regPass !== regPassConfirm) { setRegError('הסיסמאות אינן תואמות'); return; }
+                if (!acceptTos) { setRegError('עליך לאשר את תנאי השימוש'); return; }
+                const newUser = { id: String(Date.now()), type: 'user', email: regEmail.toLowerCase().trim(), password: regPass, role: 'customer', name: regName, phone: regPhone };
                 callApi({ action: 'ADD_ROW', data: newUser });
-                setShowRegister(false);
-                setRegError('');
-                setError('חשבון נוצר בהצלחה. כעת ניתן להתחבר.');
-                setRegName(''); setRegEmail(''); setRegPhone(''); setRegPass(''); setRegPassConfirm('');
+                setShowRegister(false); setRegError(''); setError('חשבון נוצר בהצלחה. כעת ניתן להתחבר.');
+                setRegName(''); setRegEmail(''); setRegPhone(''); setRegPass(''); setRegPassConfirm(''); setAcceptTos(false);
             };
 
             return (
                 <div className={`min-h-screen flex items-center justify-center p-6 transition-colors ${isDarkMode ? 'dark bg-slate-900' : ''}`} dir="rtl" style={!isDarkMode ? {backgroundColor: blendWithWhite(themeColor, 0.05)} : {}}>
                     <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-md w-full p-10 relative overflow-hidden shadow-2xl border-t-[10px]" style={{borderTopColor: themeColor, backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
                         <div className="flex justify-between items-center mb-10">
-                            <div className="flex flex-col">
-                                <h1 className="text-4xl font-black dark:text-white tracking-tighter">כניסה</h1>
+                            <div className="flex flex-col text-right text-right">
+                                <h1 className="text-4xl font-black dark:text-white tracking-tighter">{appName || "Market Manager"}</h1>
                                 <div className="flex items-center gap-2 mt-2">
                                     <div className={`w-2.5 h-2.5 rounded-full ${status === 'מחובר' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500 animate-pulse'}`}></div>
                                     <span className="text-[11px] uppercase font-black text-slate-400 tracking-wider flex items-center gap-1">
-                                        {status}
-                                        {refreshing && <Icon name="refresh" size={10} className="animate-spin text-blue-500"/>}
+                                        {status === 'מחובר' ? 'סנכרון פעיל' : status} {refreshing && <Icon name="refresh" size={10} className="animate-spin text-blue-500"/>}
                                     </span>
                                 </div>
                             </div>
-                            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 text-slate-400 rounded-2xl bg-white/50 dark:bg-slate-700 shadow-inner">
-                                <Icon name={isDarkMode ? "sun" : "moon"} size={22}/>
-                            </button>
+                            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 text-slate-400 rounded-2xl bg-white/50 dark:bg-slate-700 shadow-inner"><Icon name={isDarkMode ? "sun" : "moon"} size={22}/></button>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="space-y-2 text-right">
-                                <label className="text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-2 uppercase tracking-wide"><Icon name="mail" size={14}/> כתובת אימייל</label>
-                                <input type="email" required className="w-full border rounded-2xl p-4 dark:bg-slate-700 dark:text-white outline-none focus:ring-4 transition-all border-slate-200 dark:border-slate-600 bg-white/70 shadow-inner" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" />
-                            </div>
-                            <div className="space-y-2 text-right">
-                                <label className="text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-2 uppercase tracking-wide"><Icon name="lock" size={14}/> סיסמה</label>
-                                <input type="password" required className="w-full border rounded-2xl p-4 dark:bg-slate-700 dark:text-white outline-none focus:ring-4 transition-all border-slate-200 dark:border-slate-600 bg-white/70 shadow-inner" style={{'--tw-ring-color': themeColor + '33'}} value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" />
-                            </div>
+                        <form onSubmit={handleSubmit} className="space-y-6 text-right">
+                            <div className="space-y-1 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">אימייל</label>
+                            <input type="email" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-700 dark:text-white outline-none focus:ring-4 transition-all border-slate-200 dark:border-slate-600 bg-white/70 shadow-inner text-right" style={{'--tw-ring-color': themeColor + '33'}} value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" /></div>
+                            <div className="space-y-1 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">סיסמה</label>
+                            <input type="password" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-700 dark:text-white outline-none focus:ring-4 transition-all border-slate-200 dark:border-slate-600 bg-white/70 shadow-inner text-right" style={{'--tw-ring-color': themeColor + '33'}} value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" /></div>
                             {error && <p className="text-red-500 text-sm font-bold animate-shake bg-red-50 dark:bg-red-900/20 p-3 rounded-xl text-center border border-red-100 dark:border-red-800">{error}</p>}
                             <Button type="submit" className="w-full py-4 text-xl shadow-xl" themeColor={themeColor}>התחבר עכשיו</Button>
                         </form>
                         <div className="mt-8 pt-6 border-t dark:border-slate-700 text-center">
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">אין לך חשבון?</p>
-                            <Button variant="outline" className="w-full" onClick={() => setShowRegister(true)}>הרשמה למשתמש חדש</Button>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-bold tracking-tight">טרם נרשמת למערכת?</p>
+                            <Button variant="outline" className="w-full py-4 text-lg border-2" onClick={() => setShowRegister(true)}>הרשמה למשתמש חדש</Button>
                         </div>
                     </Card>
+
                     {showRegister && (
                         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-xl">
                             <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-lg w-full animate-in slide-in-from-bottom-12 duration-500 shadow-[0_0_80px_rgba(0,0,0,0.6)] rounded-[2.5rem] overflow-hidden p-0 border-none" style={{backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
                                 <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm">
-                                    <div className="flex flex-col">
+                                    <div className="flex flex-col text-right">
                                         <h3 className="font-black text-3xl dark:text-white tracking-tighter">הרשמת לקוח חדש</h3>
-                                        <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Create New Account</p>
+                                        <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest text-right">Create New Account</p>
                                     </div>
                                     <button onClick={()=>setShowRegister(false)} className="p-3 hover:bg-white/50 dark:hover:bg-slate-600 rounded-2xl transition-colors bg-white/20 shadow-sm border dark:border-slate-600"><Icon name="x" size={24}/></button>
                                 </div>
-                                <form onSubmit={handleRegister} className="p-8 space-y-6 text-right">
+                                <form onSubmit={handleRegister} className="p-8 space-y-4 text-right">
                                     {regError && <p className="text-red-500 text-sm font-bold animate-shake bg-red-50 dark:bg-red-900/20 p-3 rounded-xl text-center border border-red-100 dark:border-red-800">{regError}</p>}
-                                    
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">שם מלא</label>
-                                        <input required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner" value={regName} onChange={e=>setRegName(e.target.value)} placeholder="ישראל ישראלי" />
+                                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">שם מלא</label>
+                                    <input required className="w-full border-2 rounded-2xl p-3 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner text-right" value={regName} onChange={e=>setRegName(e.target.value)} placeholder="ישראל ישראלי" /></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">אימייל</label>
+                                        <input type="email" required className="w-full border-2 rounded-2xl p-3 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner text-right" value={regEmail} onChange={e=>setRegEmail(e.target.value)} placeholder="name@example.com" /></div>
+                                        <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">מספר טלפון</label>
+                                        <input type="tel" required className="w-full border-2 rounded-2xl p-3 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner text-right" value={regPhone} onChange={e=>setRegPhone(e.target.value)} placeholder="050-0000000" /></div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">אימייל</label>
-                                            <input type="email" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner" value={regEmail} onChange={e=>setRegEmail(e.target.value)} placeholder="name@example.com" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">מספר טלפון</label>
-                                            <input type="tel" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner" value={regPhone} onChange={e=>setRegPhone(e.target.value)} placeholder="050-0000000" />
-                                        </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+                                        <div className="space-y-1 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">בחר סיסמה</label>
+                                        <input type="password" required className="w-full border-2 rounded-2xl p-3 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner text-right" value={regPass} onChange={e=>setRegPass(e.target.value)} placeholder="••••••••" /></div>
+                                        <div className="space-y-1 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">אימות סיסמה</label>
+                                        <input type="password" required className="w-full border-2 rounded-2xl p-3 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner text-right" value={regPassConfirm} onChange={e=>setRegPassConfirm(e.target.value)} placeholder="••••••••" /></div>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">בחר סיסמה</label>
-                                            <input type="password" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner" value={regPass} onChange={e=>setRegPass(e.target.value)} placeholder="••••••••" />
+                                    <div className="space-y-2 text-right">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">תנאי שימוש</label>
+                                        <div className="w-full h-24 overflow-y-auto p-4 bg-black/5 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 custom-scroll text-right">
+                                            {tosContent || "טרם הוזנו תנאי שימוש למערכת זו."}
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">אימות סיסמה</label>
-                                            <input type="password" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner" value={regPassConfirm} onChange={e=>setRegPassConfirm(e.target.value)} placeholder="••••••••" />
-                                        </div>
+                                        <label className="flex items-center gap-3 cursor-pointer group mt-2 text-right justify-end">
+                                            <span className="text-xs font-bold text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300">אני מאשר שקראתי והסכמתי לתנאי השימוש</span>
+                                            <input type="checkbox" required checked={acceptTos} onChange={e=>setAcceptTos(e.target.checked)} className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-0 transition-all" />
+                                        </label>
                                     </div>
-                                    <div className="flex gap-4 pt-4">
-                                        <Button variant="secondary" className="flex-1 py-5 text-xl" onClick={()=>setShowRegister(false)}>ביטול</Button>
-                                        <Button type="submit" themeColor={themeColor} className="flex-1 py-5 font-black shadow-2xl text-xl">צור חשבון</Button>
-                                    </div>
+                                    <div className="flex gap-4 pt-4 text-right"><Button variant="secondary" className="flex-1 py-4 text-xl" onClick={()=>setShowRegister(false)}>ביטול</Button><Button type="submit" themeColor={themeColor} disabled={!acceptTos} className="flex-1 py-4 font-black shadow-2xl text-xl">צור חשבון</Button></div>
                                 </form>
                             </Card>
                         </div>
@@ -350,16 +306,18 @@
             );
         }
 
-        function SellerView({ tab, dbData, callApi, themeColor, setThemeColor, isSaving, setActiveTab, isDarkMode }) {
-            const appointments = useMemo(() => (dbData || []).filter(i => i.type === 'appointment'), [dbData]);
-            const services = useMemo(() => (dbData || []).filter(i => i.type === 'service'), [dbData]);
-            const customers = useMemo(() => (dbData || []).filter(i => i.type === 'user' && i.role === 'customer'), [dbData]);
+        function SellerView({ tab, dbData, callApi, themeColor, setThemeColor, isSaving, setActiveTab, isDarkMode, appName, setAppName, appDesc, setAppDesc, tosContent, setTosContent }) {
+            const appointments = useMemo(() => (dbData || []).filter(i => i && i.type === 'appointment'), [dbData]);
+            const services = useMemo(() => (dbData || []).filter(i => i && i.type === 'service'), [dbData]);
+            const customers = useMemo(() => (dbData || []).filter(i => i && i.type === 'user' && i.role === 'customer'), [dbData]);
             const [editing, setEditing] = useState(null);
             const [customerModal, setCustomerModal] = useState(null);
+            const [manualAppt, setManualAppt] = useState(false);
 
             if (tab === 'main') return (
                 <div className="space-y-8 animate-in fade-in duration-500 text-right">
-                    <h2 className="text-3xl font-black dark:text-white flex items-center gap-3 tracking-tighter"><Icon name="calendar" size={32} className="text-slate-400"/> הזמנות ביומן</h2>
+                    <div className="flex justify-between items-center"><h2 className="text-3xl font-black dark:text-white flex items-center gap-3 tracking-tighter"><Icon name="calendar" size={32} className="text-slate-400"/> הזמנות ביומן</h2>
+                    <Button themeColor={themeColor} onClick={() => setManualAppt(true)}><Icon name="plus" size={18}/> הוסף הזמנה ידנית</Button></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {appointments.length === 0 && <p className="text-slate-400 italic bg-white/50 dark:bg-slate-800 p-12 rounded-3xl border-4 border-dashed border-slate-100 dark:border-slate-700 text-center col-span-full font-black uppercase tracking-widest text-sm opacity-50">אין מידע להצגה</p>}
                         {appointments.map((a, idx) => {
@@ -367,33 +325,15 @@
                             const hasConflict = appointments.filter(other => other && String(other.id) !== String(a.id) && other.date === a.date && normalizeTime(other.time) === normalizeTime(a.time)).length > 0;
                             const isCancelRequested = a.status === 'cancel_requested';
                             const customerRecord = customers.find(c => c && String(c.id) === String(a.customerId));
-                            const customerPhone = customerRecord?.phone || "אין טלפון";
 
                             return (
                                 <Card key={a.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="border-r-[6px] hover:shadow-xl transition-all group border-slate-100 dark:border-slate-700" style={{borderRightColor: isCancelRequested ? '#ef4444' : a.status === 'confirmed' ? themeColor : '#f59e0b'}}>
                                     <div className="flex justify-between items-start mb-6">
-                                        <div className="space-y-1">
-                                            <h3 className="font-black text-xl dark:text-white leading-none tracking-tight">{a.customerName || "לקוח לא ידוע"}</h3>
-                                            <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1 mt-1 opacity-70"><Icon name="phone" size={12}/> {customerPhone}</p>
-                                            <div className="flex items-center gap-2 bg-white/30 dark:bg-slate-700 px-2.5 py-1 rounded-lg mt-3">
-                                                <span className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">{a.serviceName}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-left bg-black/5 dark:bg-slate-900/50 p-2 rounded-xl border dark:border-slate-700">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{normalizeDate(a.date)}</p>
-                                            <p className="text-2xl font-black mt-1" style={{color: themeColor}}>{normalizeTime(a.time)}</p>
-                                        </div>
+                                        <div className="space-y-1"><h3 className="font-black text-xl dark:text-white leading-none tracking-tight">{a.customerName || "לקוח לא ידוע"}</h3><p className="text-[11px] font-bold text-slate-500 flex items-center gap-1 mt-1 opacity-70"><Icon name="phone" size={12}/> {customerRecord?.phone || "אין טלפון"}</p><div className="flex items-center gap-2 bg-white/30 dark:bg-slate-700 px-2.5 py-1 rounded-lg mt-3"><span className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">{a.serviceName}</span></div></div>
+                                        <div className="text-left bg-black/5 dark:bg-slate-900/50 p-2 rounded-xl border dark:border-slate-700"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{normalizeDate(a.date)}</p><p className="text-2xl font-black mt-1" style={{color: themeColor}}>{normalizeTime(a.time)}</p></div>
                                     </div>
-                                    {isCancelRequested && (
-                                        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-2xl flex items-start gap-3 shadow-sm border-2">
-                                            <Icon name="alert" size={20} className="text-red-600 shrink-0 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-100 font-black leading-relaxed">הלקוח ביקש לבטל את התור!</p>
-                                        </div>
-                                    )}
-                                    {hasConflict && !isCancelRequested && (
-                                        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl flex items-start gap-3 animate-pulse">
-                                            <Icon name="alert" size={20} className="text-red-600 shrink-0 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-100 font-black leading-relaxed">שים לב: קיימת התנגשות בזמנים! תור נוסף נקבע לשעה זו.</p>
-                                        </div>
-                                    )}
+                                    {isCancelRequested && (<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-2xl flex items-start gap-3 border-2 shadow-sm"><Icon name="alert" size={20} className="text-red-600 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-100 font-black leading-relaxed">הלקוח ביקש לבטל את התור!</p></div>)}
+                                    {hasConflict && !isCancelRequested && (<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl flex items-start gap-3 animate-pulse"><Icon name="alert" size={20} className="text-red-600 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-200 font-bold leading-relaxed">שים לב: קיימת התנגשות בזמנים!</p></div>)}
                                     <div className="bg-white/40 dark:bg-slate-900/50 p-4 rounded-2xl mb-6 border border-slate-100 dark:border-slate-700 shadow-inner">
                                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1.5"><Icon name="mail" size={12}/> הודעת לקוח</p>
                                         <p className="text-sm dark:text-slate-200 italic font-medium leading-relaxed">"{a.message || 'לא נכתבה הודעה'}"</p>
@@ -401,10 +341,14 @@
                                     <div className="space-y-3">
                                         {isCancelRequested ? (
                                             <div className="space-y-2">
-                                                <Button variant="danger" className="w-full" disabled={isSaving} onClick={() => callApi({action: 'DELETE_ROW', id: a.id})}><Icon name="trash" size={16}/> אשר ביטול ומחק תור</Button>
-                                                <Button variant="secondary" className="w-full" disabled={isSaving} onClick={() => callApi({action: 'UPDATE_ROW', id: a.id, updates: {status: 'confirmed'}})}><Icon name="x" size={16}/> סרב לביטול (השאר תור)</Button>
+                                                <Button variant="danger" className="w-full" disabled={isSaving} onClick={() => callApi({action: 'DELETE_ROW', id: a.id})}>
+                                                    <Icon name="trash" size={16}/> אשר ביטול ומחק
+                                                </Button>
+                                                <Button variant="secondary" className="w-full" disabled={isSaving} onClick={() => callApi({action: 'UPDATE_ROW', id: a.id, updates: {status: 'confirmed'}})}>
+                                                    <Icon name="x" size={16}/> סרב לביטול
+                                                </Button>
                                             </div>
-                                        ) : a.status !== 'confirmed' && (
+                                        ) : a.status === 'pending' && (
                                             <Button themeColor="#f59e0b" className="w-full" disabled={isSaving} onClick={() => callApi({action: 'UPDATE_ROW', id: a.id, updates: {status: 'confirmed'}})}><Icon name="check" size={16}/> אשר הזמנה</Button>
                                         )}
                                         <Button variant="outline" className="w-full text-xs py-3.5 font-black uppercase tracking-tighter" onClick={() => setEditing(a)}>ניהול ועריכת תור</Button>
@@ -416,47 +360,34 @@
                     {editing && (
                         <div className="fixed inset-0 bg-slate-900/20 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
                             <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-lg w-full space-y-8 animate-in zoom-in duration-300 shadow-2xl overflow-hidden p-0 border-none rounded-[2rem]" style={{backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
-                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm">
-                                    <h3 className="font-black text-2xl dark:text-white tracking-tighter">עריכת הזמנה מלאה</h3>
-                                    <button onClick={()=>setEditing(null)} className="p-3 text-slate-400 hover:text-slate-600 transition-colors bg-white shadow-sm rounded-2xl"><Icon name="x"/></button>
-                                </div>
-                                <form className="p-8 space-y-6 pt-2 text-right" onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const formData = new FormData(e.target);
-                                    callApi({
-                                        action: 'UPDATE_ROW',
-                                        id: editing.id,
-                                        updates: {
-                                            customerName: formData.get('name'),
-                                            message: formData.get('msg'),
-                                            date: formData.get('date'),
-                                            time: formData.get('time')
-                                        }
-                                    });
-                                    setEditing(null);
+                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm text-right"><h3 className="font-black text-2xl dark:text-white tracking-tighter">עריכת הזמנה</h3><button onClick={()=>setEditing(null)} className="p-3 text-slate-400 bg-white shadow-sm rounded-2xl"><Icon name="x"/></button></div>
+                                <form className="p-8 space-y-6 pt-2 text-right" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.target); callApi({ action: 'UPDATE_ROW', id: editing.id, updates: { customerName: fd.get('name'), message: fd.get('msg'), date: fd.get('date'), time: fd.get('time') }}); setEditing(null); }}>
+                                    <div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">שם לקוח</label><input name="name" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner text-right" defaultValue={editing.customerName} /></div>
+                                    <div className="grid grid-cols-2 gap-6 text-right"><div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">תאריך</label><input name="date" type="date" className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner text-right" defaultValue={editing.date} /></div><div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">שעה</label><input name="time" type="time" className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner text-right" defaultValue={normalizeTime(editing.time)} /></div></div>
+                                    <div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">הודעה</label><textarea name="msg" className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner min-h-[120px] text-right" defaultValue={editing.message} /></div>
+                                    <div className="flex gap-4 pt-4 text-right"><Button variant="danger" className="flex-1 py-4 text-lg" disabled={isSaving} onClick={() => { callApi({action:'DELETE_ROW', id:editing.id}); setEditing(null); }}><Icon name="trash" size={18}/> ביטול תור</Button><Button themeColor={themeColor} disabled={isSaving} type="submit" className="flex-1 py-4 font-black shadow-xl text-lg">שמור שינויים</Button></div>
+                                </form>
+                            </Card>
+                        </div>
+                    )}
+                    {manualAppt && (
+                        <div className="fixed inset-0 bg-slate-900/20 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
+                            <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-lg w-full shadow-2xl p-0 border-none rounded-[2rem]" style={{backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
+                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b shadow-sm text-right"><h3 className="font-black text-2xl dark:text-white text-right">הזמנה ידנית</h3><button onClick={()=>setManualAppt(false)} className="p-3 text-slate-400 bg-white rounded-2xl"><Icon name="x"/></button></div>
+                                <form className="p-8 space-y-5 text-right" onSubmit={(e) => {
+                                    e.preventDefault(); const fd = new FormData(e.target);
+                                    const selectedCustomer = customers.find(c => String(c.id) === String(fd.get('cId')));
+                                    const selectedService = services.find(s => String(s.id) === String(fd.get('sId')));
+                                    callApi({action: 'ADD_ROW', data: {id: String(Date.now()), type: 'appointment', customerId: selectedCustomer.id, customerName: selectedCustomer.name, serviceId: selectedService.id, serviceName: selectedService.name, date: fd.get('date'), time: fd.get('time'), status: 'confirmed', message: 'הזמנה ידנית מהמוכר' }});
+                                    setManualAppt(false);
                                 }}>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">שם לקוח מלא</label>
-                                        <input name="name" required className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner" defaultValue={editing.customerName} />
+                                    <div><label className="text-[10px] font-black text-slate-400 block mb-1 text-right">בחר לקוח</label><select name="cId" required className="w-full border-2 rounded-xl p-3 bg-white/70 text-right">{customers.map(c=>(<option key={c.id} value={c.id}>{c.name}</option>))}</select></div>
+                                    <div><label className="text-[10px] font-black text-slate-400 block mb-1 text-right">בחר שירות</label><select name="sId" required className="w-full border-2 rounded-xl p-3 bg-white/70 text-right">{services.map(s=>(<option key={s.id} value={s.id}>{s.name}</option>))}</select></div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-right"><label className="text-[10px] font-black text-slate-400 block mb-1 text-right">תאריך</label><input name="date" type="date" required className="w-full border-2 rounded-xl p-3 bg-white/70 text-right" /></div>
+                                        <div className="text-right"><label className="text-[10px] font-black text-slate-400 block mb-1 text-right">שעה</label><input name="time" type="time" required className="w-full border-2 rounded-xl p-3 bg-white/70 text-right" /></div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">תאריך</label>
-                                            <input name="date" type="date" className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner" defaultValue={editing.date} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">שעה</label>
-                                            <input name="time" type="time" className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none focus:ring-4 transition-all bg-white/70 border-slate-100 shadow-inner" defaultValue={normalizeTime(editing.time)} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">הודעה</label>
-                                        <textarea name="msg" className="w-full border-2 rounded-2xl p-4 dark:bg-slate-800 dark:text-white outline-none bg-white/70 border-slate-100 shadow-inner min-h-[120px]" defaultValue={editing.message} />
-                                    </div>
-                                    <div className="flex gap-4 pt-4">
-                                        <Button variant="danger" className="flex-1 py-4 text-lg" disabled={isSaving} onClick={() => { callApi({action:'DELETE_ROW', id:editing.id}); setEditing(null); }}><Icon name="trash" size={18}/> ביטול תור</Button>
-                                        <Button themeColor={themeColor} disabled={isSaving} type="submit" className="flex-1 py-4 font-black shadow-xl text-lg">{isSaving ? "מעדכן..." : "שמור שינויים"}</Button>
-                                    </div>
+                                    <Button type="submit" themeColor={themeColor} className="w-full py-4 mt-4 font-black">צור הזמנה עכשיו</Button>
                                 </form>
                             </Card>
                         </div>
@@ -466,16 +397,16 @@
 
             if (tab === 'customers') return (
                 <div className="space-y-8 animate-in fade-in duration-500 text-right">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-3xl font-black dark:text-white tracking-tighter leading-none">ניהול לקוחות המרקט</h2>
+                    <div className="flex justify-between items-center text-right">
+                        <h2 className="text-3xl font-black dark:text-white tracking-tighter leading-none text-right">ניהול לקוחות המרקט</h2>
                         <Button themeColor={themeColor} onClick={() => setCustomerModal({mode: 'add', customer: {}})}><Icon name="plus" size={18}/> הוסף לקוח ידנית</Button>
                     </div>
-                    <div className="grid gap-4">
+                    <div className="grid gap-4 text-right">
                         {customers.map((c, idx) => (
                             <Card key={c.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="flex items-center justify-between p-6">
                                 <div className="flex items-center gap-6">
                                     <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm" style={{backgroundColor: themeColor}}><Icon name="user" size={24}/></div>
-                                    <div className="text-right"><h4 className="font-bold text-xl dark:text-white leading-none">{c.name || "ללא שם"}</h4><div className="flex gap-4 mt-2"><p className="text-sm font-bold text-slate-500 flex items-center gap-1"><Icon name="phone" size={12}/> {c.phone || "ללא טלפון"}</p><p className="text-sm font-bold text-slate-500 flex items-center gap-1"><Icon name="mail" size={12}/> {c.email || "ללא אימייל"}</p></div></div>
+                                    <div className="text-right"><h4 className="font-bold text-xl dark:text-white leading-none text-right">{c.name || "ללא שם"}</h4><div className="flex gap-4 mt-2"><p className="text-sm font-bold text-slate-500 flex items-center gap-1"><Icon name="phone" size={12}/> {c.phone || "ללא טלפון"}</p><p className="text-sm font-bold text-slate-500 flex items-center gap-1"><Icon name="mail" size={12}/> {c.email || "ללא אימייל"}</p></div></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => setCustomerModal({mode: 'edit', customer: c})} className="p-3 text-slate-400 bg-black/5 rounded-xl"><Icon name="settings" size={18}/></button>
@@ -487,8 +418,8 @@
                     {customerModal && (
                         <div className="fixed inset-0 bg-slate-900/20 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
                             <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-md w-full space-y-8 shadow-2xl p-0 border-none rounded-[2rem]" style={{backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
-                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm">
-                                    <h3 className="font-black text-2xl dark:text-white tracking-tighter">{customerModal.mode === 'add' ? 'הוספת לקוח חדש' : 'עריכת פרטי לקוח'}</h3>
+                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm text-right">
+                                    <h3 className="font-black text-2xl dark:text-white tracking-tighter text-right">{customerModal.mode === 'add' ? 'הוספת לקוח חדש' : 'עריכת פרטי לקוח'}</h3>
                                     <button onClick={()=>setCustomerModal(null)} className="p-3 text-slate-400 bg-white shadow-sm rounded-2xl"><Icon name="x"/></button>
                                 </div>
                                 <form className="p-8 space-y-5 text-right" onSubmit={(e) => {
@@ -498,10 +429,10 @@
                                     else { callApi({action: 'UPDATE_ROW', id: customerModal.customer.id, updates}); }
                                     setCustomerModal(null);
                                 }}>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1">שם מלא</label><input name="cName" required defaultValue={customerModal.customer.name} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none" /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1">אימייל</label><input name="cEmail" type="email" required defaultValue={customerModal.customer.email} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none" /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1">טלפון</label><input name="cPhone" required defaultValue={customerModal.customer.phone} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none" /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1">סיסמה</label><input name="cPass" required defaultValue={customerModal.customer.password} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none" /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1 text-right">שם מלא</label><input name="cName" required defaultValue={customerModal.customer.name} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none text-right" /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1 text-right">אימייל</label><input name="cEmail" type="email" required defaultValue={customerModal.customer.email} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none text-right" /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1 text-right">טלפון</label><input name="cPhone" required defaultValue={customerModal.customer.phone} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none text-right" /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest mb-1 text-right">סיסמה</label><input name="cPass" required defaultValue={customerModal.customer.password} className="w-full border-2 rounded-xl p-3 bg-white/70 outline-none text-right" /></div>
                                     <Button type="submit" themeColor={themeColor} className="w-full py-4 mt-4 font-black">{customerModal.mode === 'add' ? 'צור לקוח' : 'שמור שינויים'}</Button>
                                 </form>
                             </Card>
@@ -512,21 +443,21 @@
 
             if (tab === 'services') return (
                 <div className="space-y-8 animate-in fade-in duration-500 text-right">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-3xl font-black dark:text-white tracking-tighter leading-none">ניהול שירותים ומכירה</h2>
+                    <div className="flex justify-between items-center text-right">
+                        <h2 className="text-3xl font-black dark:text-white tracking-tighter leading-none text-right">ניהול שירותים ומכירה</h2>
                         <Button themeColor={themeColor} onClick={() => callApi({action: 'ADD_ROW', data: {id: String(Date.now()), type: 'service', name: 'שירות חדש', open: '09:00', close: '18:00', interval: '30', img: ''}})}><Icon name="plus" size={18}/> הוסף שירות</Button>
                     </div>
-                    <div className="grid gap-6">
+                    <div className="grid gap-6 text-right">
                         {services.map((s, idx) => (
                             <Card key={s.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="flex flex-col md:flex-row gap-8 items-center p-8 hover:border-slate-400 group relative overflow-hidden text-right">
                                 <div className="absolute top-0 right-0 w-1.5 h-full" style={{backgroundColor: themeColor}}></div>
                                 <div className="w-24 h-24 bg-white/50 dark:bg-slate-900 rounded-3xl flex items-center justify-center text-slate-400 shrink-0 shadow-inner border-2 border-dashed border-slate-300 transition-transform group-hover:scale-105">{s.img ? <img src={s.img} className="w-full h-full object-cover rounded-3xl"/> : <Icon name="image" size={32}/>}</div>
-                                <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-6 w-full">
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">שם השירות</label><input className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 outline-none" defaultValue={s.name} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{name:e.target.value}})} /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">URL לתמונה</label><input className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 outline-none" defaultValue={s.img} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{img:e.target.value}})} placeholder="https://..." /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">פתיחה</label><input type="time" className="w-full border-2 rounded-xl p-3 text-sm bg-white/70" defaultValue={normalizeTime(s.open)} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{open:e.target.value}})} /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">סגירה</label><input type="time" className="w-full border-2 rounded-xl p-3 text-sm bg-white/70" defaultValue={normalizeTime(s.close)} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{close:e.target.value}})} /></div>
-                                    <div><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">מרווח</label><select className="w-full border-2 rounded-xl p-3 text-sm bg-white/70" defaultValue={s.interval} onChange={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{interval:e.target.value}})}><option value="15">15 דק'</option><option value="30">30 דק'</option><option value="45">45 דק'</option><option value="60">שעה</option><option value="120">שעתיים</option><option value="240">4 שעות</option><option value="480">8 שעות</option><option value="720">12 שעות</option></select></div>
+                                <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-6 w-full text-right">
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">שם השירות</label><input className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 outline-none text-right" defaultValue={s.name} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{name:e.target.value}})} /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">URL לתמונה</label><input className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 outline-none text-right" defaultValue={s.img} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{img:e.target.value}})} placeholder="https://..." /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">פתיחה</label><input type="time" className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 text-right" defaultValue={normalizeTime(s.open)} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{open:e.target.value}})} /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">סגירה</label><input type="time" className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 text-right" defaultValue={normalizeTime(s.close)} onBlur={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{close:e.target.value}})} /></div>
+                                    <div className="text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">מרווח</label><select className="w-full border-2 rounded-xl p-3 text-sm bg-white/70 text-right" defaultValue={s.interval} onChange={e=>callApi({action:'UPDATE_ROW', id:s.id, updates:{interval:e.target.value}})}><option value="15">15 דק'</option><option value="30">30 דק'</option><option value="45">45 דק'</option><option value="60">שעה</option><option value="120">שעתיים</option><option value="240">4 שעות</option><option value="480">8 שעות</option><option value="720">12 שעות</option></select></div>
                                 </div>
                                 <Button variant="danger" className="p-3.5 rounded-2xl shrink-0" onClick={()=>callApi({action:'DELETE_ROW', id:s.id})}><Icon name="trash" size={20}/></Button>
                             </Card>
@@ -536,10 +467,18 @@
             );
 
             if (tab === 'settings') return (
-                <div className="max-w-2xl mx-auto py-12 animate-in slide-in-from-bottom-8 duration-700">
+                <div className="max-w-2xl mx-auto py-12 animate-in slide-in-from-bottom-8 duration-700 text-right">
                     <Card themeColor={themeColor} isDarkMode={isDarkMode} className="space-y-10 p-12 border-t-[12px] shadow-2xl rounded-[2.5rem]" style={{borderTopColor: themeColor}}>
-                        <div className="text-center"><h2 className="text-4xl font-black dark:text-white mb-3 tracking-tighter">עיצוב המערכת</h2><p className="text-slate-500 font-bold uppercase text-xs tracking-widest opacity-60">Visual Identity Control</p></div>
-                        <div className="flex flex-col items-center bg-black/5 dark:bg-slate-900/50 p-12 rounded-[2rem] border-4 border-dashed border-slate-200 transition-all"><div className="relative group mb-10 transform transition-transform hover:scale-110"><input type="color" className="w-32 h-32 rounded-full cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => { setThemeColor(e.target.value); callApi({action:'UPDATE_SETTINGS', updates:{themeColor:e.target.value}}); }} /><div className="absolute inset-0 rounded-full pointer-events-none border-[12px] border-white dark:border-slate-800 shadow-2xl scale-110"></div></div><p className="font-mono text-3xl dark:text-white font-black uppercase tracking-[0.3em] mb-3">{themeColor}</p><span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] bg-white dark:bg-slate-800 px-4 py-1.5 rounded-full border dark:border-slate-700">Primary Color</span></div>
+                        <div className="text-center text-right"><h2 className="text-4xl font-black dark:text-white mb-3 tracking-tighter text-right">עיצוב המערכת</h2><p className="text-slate-500 font-bold uppercase text-xs tracking-widest opacity-60 text-right">Visual Identity Control</p></div>
+                        <div className="grid gap-8 text-right">
+                            <div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">שם המערכת</label>
+                            <input className="w-full border-2 rounded-2xl p-4 bg-white/70 shadow-inner text-right" defaultValue={appName} onBlur={e => { setAppName(e.target.value); callApi({action:'UPDATE_SETTINGS', updates:{appName:e.target.value}}); }} /></div>
+                            <div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">תיאור המערכת</label>
+                            <input className="w-full border-2 rounded-2xl p-4 bg-white/70 shadow-inner text-right" defaultValue={appDesc} onBlur={e => { setAppDesc(e.target.value); callApi({action:'UPDATE_SETTINGS', updates:{appDesc:e.target.value}}); }} /></div>
+                            <div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">תנאי שימוש (ToS)</label>
+                            <textarea className="w-full border-2 rounded-2xl p-4 bg-white/70 shadow-inner min-h-[160px] text-right" defaultValue={tosContent} onBlur={e => { setTosContent(e.target.value); callApi({action:'UPDATE_SETTINGS', updates:{tosContent:e.target.value}}); }} placeholder="הקלד כאן את תנאי השימוש..." /></div>
+                            <div className="flex flex-col items-center bg-black/5 p-10 rounded-[2rem] border-4 border-dashed border-slate-200 transition-all text-right"><div className="relative group mb-6 transform transition-transform hover:scale-110"><input type="color" className="w-32 h-32 rounded-full cursor-pointer border-none bg-transparent" value={themeColor} onChange={e => { setThemeColor(e.target.value); callApi({action:'UPDATE_SETTINGS', updates:{themeColor:e.target.value}}); }} /><div className="absolute inset-0 rounded-full pointer-events-none border-[12px] border-white dark:border-slate-800 shadow-2xl scale-110"></div></div><p className="font-mono text-3xl dark:text-white font-black uppercase tracking-[0.3em] mb-3 text-right">{themeColor}</p><span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] bg-white dark:bg-slate-800 px-4 py-1.5 rounded-full border dark:border-slate-700 text-right">Primary Color</span></div>
+                        </div>
                     </Card>
                 </div>
             );
@@ -547,9 +486,9 @@
             return null;
         }
 
-        function CustomerView({ tab, dbData, callApi, themeColor, user, isSaving, setActiveTab, isDarkMode }) {
-            const services = useMemo(() => (dbData || []).filter(i => i.type === 'service'), [dbData]);
-            const appointments = useMemo(() => (dbData || []).filter(i => i.type === 'appointment' && String(i.customerId) === String(user.id)), [dbData, user.id]);
+        function CustomerView({ tab, dbData, callApi, themeColor, user, isSaving, setActiveTab, isDarkMode, appName, appDesc, tosContent }) {
+            const services = useMemo(() => (dbData || []).filter(i => i && i.type === 'service'), [dbData]);
+            const appointments = useMemo(() => (dbData || []).filter(i => i && i.type === 'appointment' && String(i.customerId) === String(user.id)), [dbData, user.id]);
             const [booking, setBooking] = useState(null);
             const [cancelTarget, setCancelTarget] = useState(null);
             const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -560,16 +499,16 @@
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {services.map((s, idx) => (
                             <Card key={s.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="group hover:ring-4 hover:shadow-2xl transition-all cursor-pointer overflow-hidden p-0 border-none relative rounded-[2rem]" style={{'--tw-ring-color': themeColor + '44'}} onClick={()=>setBooking({svc:s, date:getTodayStr(), time:'', message:''})}>
-                                <div className="h-60 bg-black/5 dark:bg-slate-900 flex items-center justify-center text-slate-300 relative shadow-inner"><div className="absolute top-6 right-6 bg-white/95 dark:bg-slate-800/95 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl border" style={{color: themeColor}}>Available Now</div>{s.img ? <img src={s.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"/> : <Icon name="image" size={60} className="opacity-20"/>}</div>
-                                <div className="p-8 text-right"><h3 className="font-black text-2xl dark:text-white mb-3 tracking-tight group-hover:translate-x-2 transition-transform">{s.name}</h3><div className="flex justify-between items-center text-xs text-slate-400 font-black uppercase tracking-widest pt-6 border-t dark:border-slate-700"><span className="flex items-center gap-2 bg-black/5 dark:bg-slate-900 p-2.5 rounded-xl border"><Icon name="clock" size={16}/> {normalizeTime(s.open)} - {normalizeTime(s.close)}</span><span className="bg-black/5 dark:bg-slate-900 p-2.5 rounded-xl border">{formatDuration(s.interval)}</span></div></div>
+                                <div className="h-60 bg-black/5 dark:bg-slate-900 flex items-center justify-center text-slate-300 relative shadow-inner"><div className="absolute top-6 right-6 bg-white/95 dark:bg-slate-800/95 px-5 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl border" style={{color: themeColor}}>זמין כעת</div>{s.img ? <img src={s.img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"/> : <Icon name="image" size={60} className="opacity-20"/>}</div>
+                                <div className="p-8 text-right"><h3 className="font-black text-2xl dark:text-white mb-3 tracking-tight group-hover:translate-x-2 transition-transform">{s.name}</h3><div className="flex justify-between items-center text-xs text-slate-400 font-black uppercase tracking-widest pt-6 border-t dark:border-slate-700 text-right"><span className="flex items-center gap-2 bg-black/5 dark:bg-slate-900 p-2.5 rounded-xl border text-right"><Icon name="clock" size={16}/> {normalizeTime(s.open)} - {normalizeTime(s.close)}</span><span className="bg-black/5 dark:bg-slate-900 p-2.5 rounded-xl border text-right">{formatDuration(s.interval)}</span></div></div>
                             </Card>
                         ))}
                     </div>
                     {booking && (
                         <div className="fixed inset-0 bg-slate-900/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                             <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-lg w-full space-y-8 animate-in slide-in-from-bottom-12 duration-500 shadow-[0_0_80px_rgba(0,0,0,0.15)] rounded-[2.5rem] overflow-hidden p-0 border-none text-right" style={{backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
-                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm"><div className="flex flex-col"><h3 className="font-black text-3xl dark:text-white tracking-tighter leading-tight">קביעת {booking.svc.name}</h3><p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Appointment Scheduler</p></div><button onClick={()=>setBooking(null)} className="p-3 hover:bg-white/50 dark:hover:bg-slate-600 rounded-2xl transition-colors bg-white/20 shadow-sm border dark:border-slate-600"><Icon name="x" size={24}/></button></div>
-                                <div className="p-8 space-y-6 pt-2 text-right"><div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 rounded-2xl flex items-start gap-3"><Icon name="alert" size={20} className="text-amber-600 mt-0.5"/><p className="text-sm text-amber-800 dark:text-amber-200 font-bold leading-relaxed">שימו לב: לאחר שליחת ההזמנה, עליכם להמתין לאישור סופי מהמוכר.</p></div><div className="space-y-2"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">1. בחר תאריך</label><input type="date" className="w-full border-2 rounded-2xl p-4 bg-white/70 outline-none" min={getTodayStr()} value={booking.date} onChange={e=>setBooking({...booking, date:e.target.value})}/></div><div className="space-y-2"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">2. בחר שעה זמינה</label><div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scroll">{generateTimeSlots(booking.svc.open, booking.svc.close, booking.svc.interval).map(slot => { const isTaken = dbData.some(a => a && a.type === 'appointment' && a.date === booking.date && normalizeTime(a.time) === slot); const isSelected = booking.time === slot; return (<button key={slot} disabled={isTaken} onClick={() => setBooking({...booking, time: slot})} className={`p-3 rounded-xl border-2 font-bold transition-all text-sm ${isTaken ? "bg-black/10 text-slate-300 border-transparent cursor-not-allowed" : isSelected ? "border-blue-600 bg-white text-blue-700 shadow-md scale-105" : "border-white/40 dark:border-slate-700 dark:text-white hover:border-white"}`} style={isSelected ? {borderColor: themeColor, color: themeColor } : {}}>{slot}</button>); })}</div></div><div className="space-y-2"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest">3. הודעה למוכר (אופציונלי)</label><textarea className="w-full border-2 rounded-2xl p-4 bg-white/70 outline-none min-h-[100px]" placeholder="ספר לנו על בקשות מיוחדות או שאלות..." onChange={e=>setBooking({...booking, message:e.target.value})}/></div><div className="flex gap-4 pt-4"><Button variant="secondary" className="flex-1 py-5 text-xl" onClick={()=>setBooking(null)}>ביטול</Button><Button themeColor={themeColor} disabled={isSaving || !booking.time} className="flex-1 py-5 font-black shadow-2xl text-xl" onClick={()=>{ callApi({action:'ADD_ROW', data:{id:String(Date.now()), type:'appointment', serviceId:booking.svc.id, serviceName:booking.svc.name, customerId:user.id, customerName:user.name, date:booking.date, time:booking.time, message:booking.message, status: 'pending'}}); setBooking(null); }}>אשר הזמנה עכשיו</Button></div></div>
+                                <div className="p-8 bg-black/5 dark:bg-slate-700 flex justify-between items-center border-b dark:border-slate-600 shadow-sm text-right"><div className="flex flex-col text-right"><h3 className="font-black text-3xl dark:text-white tracking-tighter leading-tight text-right">קביעת {booking.svc.name}</h3><p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest text-right">Appointment Scheduler</p></div><button onClick={()=>setBooking(null)} className="p-3 hover:bg-white/50 dark:hover:bg-slate-600 rounded-2xl transition-colors bg-white/20 shadow-sm border dark:border-slate-600"><Icon name="x" size={24}/></button></div>
+                                <div className="p-8 space-y-6 pt-2 text-right"><div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 rounded-2xl flex items-start gap-3 text-right"><Icon name="alert" size={20} className="text-amber-600 mt-0.5"/><p className="text-sm text-amber-800 dark:text-amber-200 font-bold leading-relaxed text-right">שימו לב: לאחר שליחת ההזמנה, עליכם להמתין לאישור סופי מהמוכר.</p></div><div className="space-y-2 text-right text-right text-right text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">1. בחר תאריך</label><input type="date" className="w-full border-2 rounded-2xl p-4 bg-white/70 outline-none text-right" min={getTodayStr()} value={booking.date} onChange={e=>setBooking({...booking, date:e.target.value})}/></div><div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">2. בחר שעה זמינה</label><div className="grid grid-cols-3 gap-3 max-h-[200px] overflow-y-auto pr-2 custom-scroll text-right">{generateTimeSlots(booking.svc.open, booking.svc.close, booking.svc.interval).map(slot => { const isTaken = dbData.some(a => a && a.type === 'appointment' && a.date === booking.date && normalizeTime(a.time) === slot); const isSelected = booking.time === slot; return (<button key={slot} disabled={isTaken} onClick={() => setBooking({...booking, time: slot})} className={`p-3 rounded-xl border-2 font-bold transition-all text-sm ${isTaken ? "bg-black/10 text-slate-300 border-transparent cursor-not-allowed" : isSelected ? "border-blue-600 bg-white text-blue-700 shadow-md scale-105" : "border-white/40 dark:border-slate-700 dark:text-white hover:border-white"}`} style={isSelected ? {borderColor: themeColor, color: themeColor } : {}}>{slot}</button>); })}</div></div><div className="space-y-2 text-right"><label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">3. הודעה למוכר (אופציונלי)</label><textarea className="w-full border-2 rounded-2xl p-4 bg-white/70 outline-none min-h-[100px] text-right" placeholder="ספר לנו על בקשות מיוחדות או שאלות..." onChange={e=>setBooking({...booking, message:e.target.value})}/></div><div className="flex gap-4 pt-4 text-right"><Button variant="secondary" className="flex-1 py-5 text-xl" onClick={()=>setBooking(null)}>ביטול</Button><Button themeColor={themeColor} disabled={isSaving || !booking.time} className="flex-1 py-5 font-black shadow-2xl text-xl" onClick={()=>{ callApi({action:'ADD_ROW', data:{id:String(Date.now()), type:'appointment', serviceId:booking.svc.id, serviceName:booking.svc.name, customerId:user.id, customerName:user.name, date:booking.date, time:booking.time, message:booking.message, status: 'pending'}}); setBooking(null); }}>אשר הזמנה עכשיו</Button></div></div>
                             </Card>
                         </div>
                     )}
@@ -578,23 +517,23 @@
 
             if (tab === 'my-bookings') return (
                 <div className="space-y-10 animate-in fade-in duration-500 text-right">
-                    <h2 className="text-3xl font-black dark:text-white tracking-tighter">התורים שלי</h2>
-                    <div className="grid gap-6">
-                        {appointments.length === 0 && (<div className="text-center py-28 bg-white/30 dark:bg-slate-800 rounded-[3rem] border-4 border-dashed border-slate-100 dark:border-slate-700 opacity-60"><Icon name="calendar" size={60} className="mx-auto text-slate-200 mb-6"/><p className="text-slate-400 italic font-black uppercase tracking-[0.2em] text-sm">No Appointments Found</p><button onClick={()=>setActiveTab('main')} className="mt-8 text-blue-500 font-black underline uppercase text-sm">Book Your First Session</button></div>)}
+                    <h2 className="text-3xl font-black dark:text-white tracking-tighter text-right">התורים שלי</h2>
+                    <div className="grid gap-6 text-right">
+                        {appointments.length === 0 && (<div className="text-center py-28 bg-white/30 dark:bg-slate-800 rounded-[3rem] border-4 border-dashed border-slate-100 dark:border-slate-700 opacity-60 text-right"><Icon name="calendar" size={60} className="mx-auto text-slate-200 mb-6"/><p className="text-slate-400 italic font-black uppercase tracking-[0.2em] text-sm text-right">No Appointments Found</p><button onClick={()=>setActiveTab('main')} className="mt-8 text-blue-500 font-black underline uppercase text-sm text-right">Book Your First Session</button></div>)}
                         {appointments.map((a, idx) => {
                             if (!a) return null;
                             const isPendingCancel = a.status === 'cancel_requested';
                             const isConfirmed = a.status === 'confirmed';
                             return (
-                                <Card key={a.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="flex flex-col sm:flex-row justify-between items-center p-8 border-slate-100 dark:border-slate-700 hover:scale-[1.01] transition-transform rounded-[2rem] relative overflow-hidden shadow-sm">
+                                <Card key={a.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="flex flex-col sm:flex-row justify-between items-center p-8 border-slate-100 dark:border-slate-700 hover:scale-[1.01] transition-transform rounded-[2rem] relative overflow-hidden shadow-sm text-right">
                                     <div className="absolute top-0 left-0 w-2 h-full opacity-30" style={{backgroundColor: isPendingCancel ? '#ef4444' : isConfirmed ? themeColor : '#f59e0b'}}></div>
-                                    <div className="flex items-center gap-8">
+                                    <div className="flex items-center gap-8 text-right">
                                         <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-xl shrink-0 transition-transform hover:rotate-6" style={{backgroundColor: isPendingCancel ? '#ef4444' : isConfirmed ? themeColor : '#f59e0b'}}><Icon name={isPendingCancel ? "alert" : isConfirmed ? "check" : "clock"} size={32}/></div>
-                                        <div className="text-right text-right"><h4 className="font-black text-3xl dark:text-white leading-none tracking-tighter mb-2">{a.serviceName}</h4><div className="flex items-center gap-4 mt-2"><p className="text-sm text-slate-400 font-black uppercase tracking-widest">{normalizeDate(a.date)}</p><span className="w-1.5 h-1.5 rounded-full bg-slate-200/50"></span><p className="text-sm font-black uppercase tracking-widest" style={{color: themeColor}}>{normalizeTime(a.time)}</p></div></div>
+                                        <div className="text-right text-right"><h4 className="font-black text-3xl dark:text-white leading-none tracking-tighter mb-2 text-right">{a.serviceName}</h4><div className="flex items-center gap-4 mt-2 text-right"><p className="text-sm text-slate-400 font-black uppercase tracking-widest text-right">{normalizeDate(a.date)}</p><span className="w-1.5 h-1.5 rounded-full bg-slate-200/50"></span><p className="text-sm font-black uppercase tracking-widest text-right" style={{color: themeColor}}>{normalizeTime(a.time)}</p></div></div>
                                     </div>
-                                    <div className="flex items-center gap-4 mt-6 sm:mt-0">
-                                        <span className={`text-[11px] px-6 py-2.5 rounded-2xl font-black uppercase tracking-[0.2em] border shadow-sm ${isPendingCancel ? 'bg-red-50 text-red-700 border-red-200' : isConfirmed ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>{isPendingCancel ? 'Waiting for Cancel Approval' : isConfirmed ? 'Confirmed' : 'Pending Confirmation'}</span>
-                                        {!isPendingCancel && <button disabled={isSaving} onClick={() => setCancelTarget(a)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors bg-white/40 shadow-sm" title="בטל תור"><Icon name="trash" size={20}/></button>}
+                                    <div className="flex items-center gap-4 mt-6 sm:mt-0 text-right">
+                                        <span className={`text-[11px] px-6 py-2.5 rounded-2xl font-black uppercase tracking-[0.2em] border shadow-sm ${isPendingCancel ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-400' : isConfirmed ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800' : 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800'}`}>{isPendingCancel ? 'ממתין לאישור ביטול' : isConfirmed ? 'מאושר' : 'ממתין לאישור'}</span>
+                                        {!isPendingCancel && <button disabled={isSaving} onClick={() => setCancelTarget(a)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors bg-white/40 shadow-sm text-right" title="בטל תור"><Icon name="trash" size={20}/></button>}
                                     </div>
                                 </Card>
                             );
@@ -603,10 +542,10 @@
                     {cancelTarget && (
                         <div className="fixed inset-0 bg-slate-900/30 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                             <Card themeColor={themeColor} isDarkMode={isDarkMode} className="max-w-md w-full space-y-6 animate-in zoom-in duration-300 shadow-2xl rounded-[2rem] overflow-hidden p-8 border-none text-center" style={{backgroundColor: isDarkMode ? '' : blendWithWhite(themeColor, 0.15) }}>
-                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><Icon name="alert" size={40}/></div>
-                                <h3 className="text-2xl font-black dark:text-white tracking-tighter">האם לבטל את התור?</h3>
-                                <div className="p-4 bg-white/40 border border-red-200 rounded-2xl"><p className="text-red-700 font-bold leading-relaxed">שימו לב: ביטול תור בטווח של פחות מ-24 שעות ממועד התור המאושר כרוך בתשלום דמי ביטול. <br/>הבקשה תישלח לאישור המוכר.</p></div>
-                                <div className="flex flex-col gap-3 pt-4">
+                                <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner text-right"><Icon name="alert" size={40}/></div>
+                                <h3 className="text-2xl font-black dark:text-white tracking-tighter text-right text-center">האם לבטל את התור?</h3>
+                                <div className="p-4 bg-white/40 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-right"><p className="text-red-700 dark:text-red-300 font-bold leading-relaxed text-right">שימו לב: ביטול תור בטווח של פחות מ-24 שעות ממועד התור המאושר כרוך בתשלום דמי ביטול. <br/>הבקשה תישלח לאישור המוכר.</p></div>
+                                <div className="flex flex-col gap-3 pt-4 text-right">
                                     <Button variant="danger" className="w-full py-4 text-lg font-black" disabled={isSaving} onClick={() => { callApi({action:'UPDATE_ROW', id: cancelTarget.id, updates: {status: 'cancel_requested'}}); setCancelTarget(null); }}>שלח בקשת ביטול</Button>
                                     <Button variant="secondary" className="w-full py-4 text-lg" onClick={()=>setCancelTarget(null)}>חזור אחורה</Button>
                                 </div>
@@ -616,10 +555,20 @@
                 </div>
             );
 
+            if (tab === 'tos') return (
+                <div className="max-w-4xl mx-auto py-10 animate-in fade-in duration-500 text-right text-right">
+                    <Card themeColor={themeColor} isDarkMode={isDarkMode} className="p-12 border-t-[10px] shadow-xl rounded-[2.5rem]" style={{borderTopColor: themeColor}}>
+                        <h2 className="text-4xl font-black dark:text-white mb-8 tracking-tighter text-right">תנאי שימוש</h2>
+                        <div className="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 leading-loose whitespace-pre-wrap font-medium text-right">
+                            {tosContent || "טרם הוגדרו תנאי שימוש עבור חנות זו."}
+                        </div>
+                    </Card>
+                </div>
+            );
+
             return null;
         }
 
-        // --- Main App Component ---
 
         function App() {
             const [user, setUser] = useState(null);
@@ -631,6 +580,11 @@
             const [isDarkMode, setIsDarkMode] = useState(false);
             const [activeTab, setActiveTab] = useState('main');
             const [status, setStatus] = useState('טוען...');
+            
+            // Dynamic branding states
+            const [appName, setAppName] = useState('Market Manager');
+            const [appDesc, setAppDesc] = useState('Active Cloud Sync');
+            const [tosContent, setTosContent] = useState('');
 
             const fetchData = useCallback(async (isBackground = false) => {
                 if (!isBackground) setLoading(true);
@@ -646,6 +600,9 @@
                         setStatus('מחובר');
                         const settings = data.find(i => i && i.type === 'settings');
                         if (settings?.themeColor) setThemeColor(settings.themeColor);
+                        if (settings?.appName) setAppName(settings.appName);
+                        if (settings?.appDesc) setAppDesc(settings.appDesc);
+                        if (settings?.tosContent) setTosContent(settings.tosContent);
                     }
                 } catch (e) { 
                     console.error("Fetch failed:", e);
@@ -716,24 +673,24 @@
                 </div>
             );
 
-            if (!user) return <LoginScreen onLogin={handleLogin} themeColor={themeColor} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} status={status} refreshing={refreshing} callApi={callApi} />;
+            if (!user) return <LoginScreen onLogin={handleLogin} themeColor={themeColor} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} status={status} refreshing={refreshing} callApi={callApi} appName={appName} appDesc={appDesc} tosContent={tosContent} />;
 
             return (
                 <div className={`min-h-screen flex flex-col dark:bg-slate-900 ${isDarkMode ? 'dark text-white' : ''}`} dir="rtl">
                     <header className="border-b p-4 flex justify-between items-center sticky top-0 z-50 shadow-sm transition-colors" style={{backgroundColor: isDarkMode ? '#1e293b' : blendWithWhite(themeColor, 0.08)}}>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 text-right">
                             <div className="p-2.5 rounded-2xl text-white flex items-center justify-center shadow-lg transform transition-transform hover:scale-105" style={{backgroundColor: themeColor}}>
                                 <Icon name={refreshing ? "refresh" : "calendar"} size={24} className={refreshing ? "animate-spin" : ""}/>
                             </div>
-                            <div className="hidden sm:block">
-                                <h1 className="font-bold text-slate-800 dark:text-white leading-none text-xl tracking-tight">Market Manager</h1>
-                                <p className="text-[10px] text-slate-500 uppercase mt-1.5 font-black tracking-widest">Active Cloud Sync</p>
+                            <div className="hidden sm:block text-right">
+                                <h1 className="font-bold text-slate-800 dark:text-white leading-none text-xl tracking-tight">{appName}</h1>
+                                <p className="text-[10px] text-slate-500 uppercase mt-1.5 font-black tracking-widest">{appDesc}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-6 text-right">
                             <div className="border-l pl-4 border-slate-200 dark:border-slate-700">
                                 <p className="text-sm font-bold dark:text-white leading-none mb-1">{user.name}</p>
-                                <p className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/50 dark:bg-slate-700 inline-block" style={{color: themeColor}}>{user.role}</p>
+                                <p className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-white/50 dark:bg-slate-700 inline-block text-right" style={{color: themeColor}}>{user.role === 'seller' ? 'מוכר' : 'לקוח'}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-yellow-400 transition-colors rounded-xl bg-white/50 dark:bg-slate-700">
@@ -758,23 +715,23 @@
                             <Fragment>
                                 <NavTab active={activeTab==='main'} label="הזמנת שירות" icon="plus" onClick={()=>setActiveTab('main')} themeColor={themeColor} isDarkMode={isDarkMode}/>
                                 <NavTab active={activeTab==='my-bookings'} label="התורים שלי" icon="calendar" onClick={()=>setActiveTab('my-bookings')} themeColor={themeColor} isDarkMode={isDarkMode}/>
+                                <NavTab active={activeTab==='tos'} label="תנאי שימוש" icon="lock" onClick={()=>setActiveTab('tos')} themeColor={themeColor} isDarkMode={isDarkMode}/>
                             </Fragment>
                         )}
                     </nav>
 
                     <main className="flex-1 p-6 max-w-7xl mx-auto w-full text-right">
                         {user.role === 'seller' ? (
-                            <SellerView tab={activeTab} dbData={dbData} callApi={callApi} themeColor={themeColor} setThemeColor={setThemeColor} isSaving={isSaving} setActiveTab={setActiveTab} isDarkMode={isDarkMode} />
+                            <SellerView tab={activeTab} dbData={dbData} callApi={callApi} themeColor={themeColor} setThemeColor={setThemeColor} isSaving={isSaving} setActiveTab={setActiveTab} isDarkMode={isDarkMode} appName={appName} setAppName={setAppName} appDesc={appDesc} setAppDesc={setAppDesc} tosContent={tosContent} setTosContent={setTosContent} />
                         ) : (
-                            <CustomerView tab={activeTab} dbData={dbData} callApi={callApi} themeColor={themeColor} user={user} isSaving={isSaving} setActiveTab={setActiveTab} isDarkMode={isDarkMode} />
+                            <CustomerView tab={activeTab} dbData={dbData} callApi={callApi} themeColor={themeColor} user={user} isSaving={isSaving} setActiveTab={setActiveTab} isDarkMode={isDarkMode} appName={appName} appDesc={appDesc} tosContent={tosContent} />
                         )}
                     </main>
                     
-                    {/* RESTORED DUPLICATE BOOKING WARNING LOGIC */}
                     {user.role === 'seller' && activeTab === 'main' && (
                         <div className="fixed bottom-6 left-6 z-[100]">
                             {(() => {
-                                const appointments = (dbData || []).filter(i => i.type === 'appointment');
+                                const appointments = (dbData || []).filter(i => i && i.type === 'appointment');
                                 const conflictsCount = appointments.filter(a => 
                                     appointments.some(other => 
                                         other && a && String(other.id) !== String(a.id) && 
@@ -787,7 +744,7 @@
                                     return (
                                         <div className="bg-red-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
                                             <Icon name="alert" size={24}/>
-                                            <span className="font-bold">שים לב: נמצאו {Math.ceil(conflictsCount)} התנגשויות ביומן!</span>
+                                            <span className="font-bold text-sm">שים לב: נמצאו {Math.ceil(conflictsCount)} התנגשויות ביומן!</span>
                                         </div>
                                     );
                                 }
