@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MarketPlace Manager Pro</title>
     
-    <!-- Scripts for React, Babel and Tailwind -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -19,7 +18,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
         body {
             font-family: 'Assistant', sans-serif;
-            transition: background-color 0.5s ease;
+            transition: background-color 0.5s;
             margin: 0;
             padding: 0;
         }
@@ -94,12 +93,62 @@
             if (s.includes('T') || (s.includes('-') && s.length > 10)) {
                 const d = new Date(s);
                 if (!isNaN(d.getTime())) {
-                    const rounded = new Date(d.getTime() + 30000); 
+                    // Excel serial time from Google Sheets: 1899-12-30T07:39:20.000Z
+                    // Use local timezone + 30s rounding so 09:59:20 shows as 10:00
+                    const isExcelTime = s.includes('1899-12-30') || d.getFullYear() < 1900;
+                    if (isExcelTime) {
+                        const rounded = new Date(d.getTime() + 30000);
+                        return `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
+                    }
+                    const rounded = new Date(d.getTime() + 30000);
                     return `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
                 }
             }
             const parts = s.split(':');
-            return parts.length >= 2 ? `${parts[0].padStart(2, '0')}:${parts[1].padEnd(2, '0').slice(0, 2)}` : s;
+            return parts.length >= 2 ? `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0').slice(0, 2)}` : s;
+        };
+
+        const getSortTime = (dateStr, timeStr) => {
+            if (!dateStr) return Infinity;
+            const s = String(dateStr).trim();
+            
+            // Extract date part only (Google Sheets sends full datetimes like 2026-05-06T21:00:00.000Z)
+            let datePart = s;
+            if (s.includes('T')) {
+                datePart = s.split('T')[0]; // "2026-05-06T21:00:00.000Z" -> "2026-05-06"
+            }
+            
+            // Extract time part
+            let timePart = '00:00';
+            const timeStrClean = String(timeStr || '').trim();
+            if (timeStrClean) {
+                if (timeStrClean.includes('T') && (timeStrClean.includes('1899-12-30') || new Date(timeStrClean).getFullYear() < 1900)) {
+                    // Excel serial time - extract local hours/minutes with 30s rounding
+                    const d = new Date(timeStrClean);
+                    if (!isNaN(d.getTime())) {
+                        const rounded = new Date(d.getTime() + 30000);
+                        timePart = `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
+                    }
+                } else {
+                    timePart = normalizeTime(timeStrClean) || '00:00';
+                }
+            }
+            
+            // ISO date: 2024-01-15
+            let d = new Date(`${datePart}T${timePart}`);
+            if (!isNaN(d.getTime())) return d.getTime();
+            
+            // Hebrew locale: 15.1.2024 or 15/01/2024
+            const parts = datePart.split(/[./]/);
+            if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                d = new Date(`${year}-${month}-${day}T${timePart}`);
+                if (!isNaN(d.getTime())) return d.getTime();
+            }
+            
+            return Infinity;
         };
 
         const formatDuration = (mins) => {
@@ -289,7 +338,7 @@
                                     </div>
                                     <div className="space-y-2 text-right">
                                         <label className="text-[10px] font-black text-slate-400 uppercase block tracking-widest text-right">תנאי שימוש</label>
-                                        <div className="w-full h-24 overflow-y-auto p-4 bg-black/5 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 custom-scroll text-right">
+                                        <div className="w-full h-24 overflow-y-auto p-4 bg-black/5 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 custom-scroll text-right">
                                             {tosContent || "טרם הוזנו תנאי שימוש למערכת זו."}
                                         </div>
                                         <label className="flex items-center gap-3 cursor-pointer group mt-2 text-right justify-end">
@@ -307,9 +356,28 @@
         }
 
         function SellerView({ tab, dbData, callApi, themeColor, setThemeColor, isSaving, setActiveTab, isDarkMode, appName, setAppName, appDesc, setAppDesc, tosContent, setTosContent }) {
-            const appointments = useMemo(() => (dbData || []).filter(i => i && i.type === 'appointment'), [dbData]);
             const services = useMemo(() => (dbData || []).filter(i => i && i.type === 'service'), [dbData]);
             const customers = useMemo(() => (dbData || []).filter(i => i && i.type === 'user' && i.role === 'customer'), [dbData]);
+            
+            // Sorted Appointments: Priority to cancel_requested, then pending, then closest time
+            const appointments = useMemo(() => {
+                const list = (dbData || []).filter(i => i && i.type === 'appointment');
+                return [...list].sort((a, b) => {
+                    const getPriority = (status) => {
+                        if (status === 'cancel_requested') return 2;
+                        if (status === 'pending') return 1;
+                        return 0;
+                    };
+                    const aPrio = getPriority(a.status);
+                    const bPrio = getPriority(b.status);
+                    if (aPrio !== bPrio) return bPrio - aPrio;
+                    
+                    const timeA = getSortTime(a.date, a.time);
+                    const timeB = getSortTime(b.date, b.time);
+                    return timeA - timeB;
+                });
+            }, [dbData]);
+
             const [editing, setEditing] = useState(null);
             const [customerModal, setCustomerModal] = useState(null);
             const [manualAppt, setManualAppt] = useState(false);
@@ -317,7 +385,8 @@
             if (tab === 'main') return (
                 <div className="space-y-8 animate-in fade-in duration-500 text-right">
                     <div className="flex justify-between items-center"><h2 className="text-3xl font-black dark:text-white flex items-center gap-3 tracking-tighter"><Icon name="calendar" size={32} className="text-slate-400"/> הזמנות ביומן</h2>
-                    <Button themeColor={themeColor} onClick={() => setManualAppt(true)}><Icon name="plus" size={18}/> הוסף הזמנה ידנית</Button></div>
+                    <Button themeColor={themeColor} onClick={() => setManualAppt(true)}><Icon name="plus" size={18}/> הוסף הזמנה ידנית</Button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {appointments.length === 0 && <p className="text-slate-400 italic bg-white/50 dark:bg-slate-800 p-12 rounded-3xl border-4 border-dashed border-slate-100 dark:border-slate-700 text-center col-span-full font-black uppercase tracking-widest text-sm opacity-50">אין מידע להצגה</p>}
                         {appointments.map((a, idx) => {
@@ -327,13 +396,13 @@
                             const customerRecord = customers.find(c => c && String(c.id) === String(a.customerId));
 
                             return (
-                                <Card key={a.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className="border-r-[6px] hover:shadow-xl transition-all group border-slate-100 dark:border-slate-700" style={{borderRightColor: isCancelRequested ? '#ef4444' : a.status === 'confirmed' ? themeColor : '#f59e0b'}}>
+                                <Card key={a.id || idx} themeColor={themeColor} isDarkMode={isDarkMode} className={`border-r-[6px] hover:shadow-xl transition-all group border-slate-100 dark:border-slate-700 ${isCancelRequested ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-slate-900' : ''}`} style={{borderRightColor: isCancelRequested ? '#ef4444' : a.status === 'confirmed' ? themeColor : '#f59e0b'}}>
                                     <div className="flex justify-between items-start mb-6">
                                         <div className="space-y-1"><h3 className="font-black text-xl dark:text-white leading-none tracking-tight">{a.customerName || "לקוח לא ידוע"}</h3><p className="text-[11px] font-bold text-slate-500 flex items-center gap-1 mt-1 opacity-70"><Icon name="phone" size={12}/> {customerRecord?.phone || "אין טלפון"}</p><div className="flex items-center gap-2 bg-white/30 dark:bg-slate-700 px-2.5 py-1 rounded-lg mt-3"><span className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">{a.serviceName}</span></div></div>
                                         <div className="text-left bg-black/5 dark:bg-slate-900/50 p-2 rounded-xl border dark:border-slate-700"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{normalizeDate(a.date)}</p><p className="text-2xl font-black mt-1" style={{color: themeColor}}>{normalizeTime(a.time)}</p></div>
                                     </div>
-                                    {isCancelRequested && (<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-2xl flex items-start gap-3 border-2 shadow-sm"><Icon name="alert" size={20} className="text-red-600 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-100 font-black leading-relaxed">הלקוח ביקש לבטל את התור!</p></div>)}
-                                    {hasConflict && !isCancelRequested && (<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl flex items-start gap-3 animate-pulse"><Icon name="alert" size={20} className="text-red-600 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-200 font-bold leading-relaxed">שים לב: קיימת התנגשות בזמנים!</p></div>)}
+                                    {isCancelRequested && (<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-2xl flex items-start gap-3 border-2 shadow-sm animate-pulse"><Icon name="alert" size={20} className="text-red-600 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-100 font-black leading-relaxed">הלקוח ביקש לבטל את התור!</p></div>)}
+                                    {hasConflict && !isCancelRequested && (<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-2xl flex items-start gap-3"><Icon name="alert" size={20} className="text-red-600 mt-0.5"/><p className="text-xs text-red-800 dark:text-red-200 font-bold leading-relaxed">שים לב: קיימת התנגשות בזמנים!</p></div>)}
                                     <div className="bg-white/40 dark:bg-slate-900/50 p-4 rounded-2xl mb-6 border border-slate-100 dark:border-slate-700 shadow-inner">
                                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1.5"><Icon name="mail" size={12}/> הודעת לקוח</p>
                                         <p className="text-sm dark:text-slate-200 italic font-medium leading-relaxed">"{a.message || 'לא נכתבה הודעה'}"</p>
@@ -586,6 +655,30 @@
             const [appDesc, setAppDesc] = useState('Active Cloud Sync');
             const [tosContent, setTosContent] = useState('');
 
+            // 3: Auto-delete garbage collector (10 mins after end time)
+            const runCleanup = useCallback((data) => {
+                const now = new Date();
+                const appointments = data.filter(i => i && i.type === 'appointment');
+                const services = data.filter(i => i && i.type === 'service');
+
+                appointments.forEach(appt => {
+                    const svc = services.find(s => String(s.id) === String(appt.serviceId));
+                    const duration = svc ? parseInt(svc.interval) : 30;
+                    
+                    const [year, month, day] = appt.date.split('-').map(Number);
+                    const [hour, min] = normalizeTime(appt.time).split(':').map(Number);
+                    const startTime = new Date(year, month - 1, day, hour, min);
+                    
+                    // End time + 10 minute buffer
+                    const expirationTime = new Date(startTime.getTime() + (duration + 10) * 60000);
+                    
+                    if (now > expirationTime) {
+                        console.log(`Auto-cleaning expired appointment: ${appt.id}`);
+                        callApi({ action: 'DELETE_ROW', id: appt.id });
+                    }
+                });
+            }, []);
+
             const fetchData = useCallback(async (isBackground = false) => {
                 if (!isBackground) setLoading(true);
                 setRefreshing(true);
@@ -603,6 +696,9 @@
                         if (settings?.appName) setAppName(settings.appName);
                         if (settings?.appDesc) setAppDesc(settings.appDesc);
                         if (settings?.tosContent) setTosContent(settings.tosContent);
+                        
+                        // Run cleanup after successful fetch
+                        runCleanup(data);
                     }
                 } catch (e) { 
                     console.error("Fetch failed:", e);
@@ -611,11 +707,11 @@
                     setLoading(false); 
                     setRefreshing(false); 
                 }
-            }, []);
+            }, [runCleanup]);
 
             useEffect(() => {
                 fetchData();
-                const interval = setInterval(() => fetchData(true), 5000); 
+                const interval = setInterval(() => fetchData(true), 15000); // 15s to save battery/quota
                 return () => clearInterval(interval);
             }, [fetchData]);
 
